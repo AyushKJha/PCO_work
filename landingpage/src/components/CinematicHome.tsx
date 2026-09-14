@@ -112,10 +112,7 @@ export function CinematicHome({ onLaunchStudio }: { onLaunchStudio: () => void }
     <div ref={content}>
       <main id="tr-main">
         <section className="tr-hero">
-          <div className="tr-hero-art" aria-hidden="true">
-            <svg className="tr-snake-filter" width="0" height="0"><filter id="tr-snake-crawl" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.006 0.025" numOctaves="2" seed="7" result="noise"><animate attributeName="baseFrequency" dur="4.8s" repeatCount="indefinite" values="0.006 0.025;0.014 0.009;0.006 0.025"/></feTurbulence><feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"><animate attributeName="scale" dur="4.8s" repeatCount="indefinite" values="3;13;3"/></feDisplacementMap></filter></svg>
-            <img src="/art/chrome-knot.png" alt="" fetchPriority="high" /><div className="tr-art-shade" />
-          </div>
+          <div className="tr-hero-art" aria-hidden="true"><img src="/art/chrome-knot.png" alt="" fetchPriority="high" /><div className="tr-knot-crawler"><img src="/art/chrome-knot.png" alt="" /></div><div className="tr-art-shade" /></div>
           <div className="tr-hero-meta"><span><i /> THE OPTIMIZATION LAYER FOR AI AGENTS</span><span>LESS WASTE / MORE POSSIBILITY</span></div>
           <h1><span>Intelligence,</span><span className="tr-outline">untangled.</span></h1>
           <div className="tr-hero-bottom"><p>Your agent has a better way to run.<br />Find it. Prove it. Make it yours.</p><button className="tr-round-link" onClick={() => go('tr-experiment')}><span>Explore the<br />possibilities</span><span className="tr-circle"><ArrowDown /></span></button><span className="tr-hero-index">SCROLL TO UNRAVEL<br /><b>01 — 04</b></span></div>
