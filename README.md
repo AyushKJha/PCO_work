@@ -1,18 +1,28 @@
-# AgentPGO
+# TwineRun / AgentPGO
 
-This repository contains the AgentPGO backend and the TwineRun frontend experience.
+This local integration combines the React frontend and backend-v1.
 
 ## Frontend
+The Vite app is in `landingpage/`. Run `npm ci`, `npm run lint`, and `npm run dev` there.
+The homepage leads to real `/signin`, `/signup`, and `/studio` routes.
+Local Vite requests to `/api/v1` are proxied to the local API at port 8000.
+Set `VITE_API_BASE_URL` explicitly for hosted builds.
 
-The `landingpage/` directory contains the Vite React app. It opens on the TwineRun landing page and routes to the optimizer studio at `#studio`; content pages are available at `#benefits`, `#how-it-works`, `#benchmarks`, `#faqs`, and `#pricing`.
+## Backend
+- FastAPI, authentication and OTLP ingestion: `apps/api/`
+- SDKs and Vercel AI SDK adapter: `packages/`
+- Profiling, evaluation, optimization and workers: `services/`
+- CLI: `cli/`
+- Alembic migrations: `migrations/`
 
-```bash
-cd landingpage
-npm ci
-npm run lint
-npm run build
-```
+Install Python >=3.11 and run `pip install -e ".[dev]"`, then `pytest -q`.
+Run migrations before the API: `alembic -c migrations/alembic.ini upgrade head`.
+Start with `uvicorn apps.api.main:app --host 127.0.0.1 --port 8000`.
 
-## AWS delivery
+Optimization/provider execution requires configured runners. Local auth and onboarding do not imply that live optimization or billing is configured.
+The interactive landing experiment is an illustrative simulation, not a live benchmark.
 
-Pushes to `frontendv1` run `.github/workflows/deploy-frontend.yml`, which builds the frontend, packages the static site with its Lambda adapter, deploys the existing AWS Lambda Function URL, waits for the update, and runs a live smoke test.
+## Deployment boundaries
+The existing frontend workflow deploys from `frontendv1`; backend deployment uses `main`.
+This integration is being reviewed locally. Do not promote it until the backend review and deployment configuration are complete.
+The legacy root Vercel configuration serves architecture documentation; use the frontend project root for frontend deployments.

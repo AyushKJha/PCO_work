@@ -1,0 +1,10 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+.pytest_cache/
+__pycache__/
+*.py[cod]
+agentpgo.egg-info/
+.vercel
+
+.env

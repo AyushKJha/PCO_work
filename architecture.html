@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentPGO Backend Architecture</title>
+  <meta name="description" content="Deep architecture map for the AgentPGO V1 backend optimization platform.">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    :root { --ink:#eaf2ff; --muted:#9eb0c9; --panel:#101b2d; --line:#263a58; --blue:#69a7ff; --cyan:#6ee7e7; --green:#89e0b0; --amber:#ffc978; --bg:#08111f; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; color:var(--ink); background:radial-gradient(circle at 15% -10%,#17325a 0,#08111f 38%),var(--bg); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.6; }
+    header { padding:72px max(24px,calc((100vw - 1180px)/2)) 46px; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--cyan); letter-spacing:.16em; text-transform:uppercase; font-size:.75rem; font-weight:700; }
+    h1 { max-width:850px; margin:12px 0 14px; font-size:clamp(2.5rem,7vw,5.8rem); line-height:.98; letter-spacing:-.06em; }
+    .lede { max-width:780px; color:var(--muted); font-size:1.15rem; }
+    .meta { display:flex; flex-wrap:wrap; gap:10px; margin-top:25px; }
+    .pill { padding:6px 11px; border:1px solid var(--line); border-radius:999px; color:#c9daf5; background:#0e1a2d; font-size:.8rem; }
+    main { max-width:1180px; margin:0 auto; padding:34px 24px 90px; }
+    nav { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:42px; }
+    nav a { color:#b8cdf0; text-decoration:none; border-bottom:1px solid transparent; font-size:.9rem; }
+    nav a:hover { color:var(--cyan); border-color:var(--cyan); }
+    section { margin:58px 0; }
+    h2 { margin:0 0 12px; font-size:2rem; letter-spacing:-.03em; }
+    h3 { color:var(--blue); margin-top:28px; }
+    p, li { color:#c4d0e1; }
+    .note { border-left:3px solid var(--amber); padding:12px 16px; background:#151d2a; color:#e9d9b5; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+    .card { background:linear-gradient(145deg,#12213a,#0d1728); border:1px solid var(--line); border-radius:14px; padding:18px; }
+    .card strong { display:block; color:#fff; margin-bottom:5px; }
+    .card span { color:var(--muted); font-size:.92rem; }
+    .diagram { overflow:auto; background:#0a1525; border:1px solid var(--line); border-radius:14px; padding:18px; margin:18px 0; }
+    .diagram .mermaid { min-width:720px; }
+    code { color:#b8f4dc; background:#0d1a2c; padding:2px 5px; border-radius:4px; }
+    pre { overflow:auto; padding:17px; border:1px solid var(--line); border-radius:12px; background:#091522; color:#c8e0ff; }
+    table { width:100%; border-collapse:collapse; margin:18px 0; font-size:.92rem; }
+    th,td { text-align:left; padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--cyan); }
+    footer { max-width:1180px; margin:0 auto; padding:0 24px 48px; color:#7387a4; font-size:.85rem; }
+    @media (max-width:700px) { header { padding-top:44px; } h1 { font-size:3.1rem; } .diagram .mermaid { min-width:600px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">AgentPGO · Backend V1</div>
+    <h1>Measure the agent. Search the cheaper configuration. Verify the tradeoff.</h1>
+    <p class="lede">A source-grounded architecture guide to the deployed backend: telemetry ingestion is isolated from customer production traffic, durable jobs run through PostgreSQL and SQS, and recommendations are emitted only after candidate metrics pass cost, latency, quality, and persistence gates.</p>
+    <div class="meta"><span class="pill">FastAPI + Python</span><span class="pill">PostgreSQL</span><span class="pill">SQS + DLQ</span><span class="pill">ECS Fargate</span><span class="pill">OpenTelemetry</span><span class="pill">Recommendation only</span></div>
+  </header>
+  <main>
+    <nav aria-label="Sections"><a href="#boundary">Boundary</a><a href="#runtime">Runtime</a><a href="#ingestion">Ingestion</a><a href="#optimization">Optimization</a><a href="#data">Data</a><a href="#durability">Durability</a><a href="#aws">AWS</a><a href="#security">Security</a><a href="#operations">Operations</a></nav>
+
+    <section id="boundary">
+      <h2>1. Product boundary</h2>
+      <p>AgentPGO is an offline control-plane and experiment system. It does not sit in the customer’s production inference path and never automatically deploys a model assignment. The SDK and generic OTLP endpoints observe calls; the API records durable work; workers execute controlled experiments; the result is an exportable recommendation.</p>
+      <div class="note"><strong>Failure isolation:</strong> if the optimizer, worker, or dashboard is unavailable, the customer agent continues to run. The only V1 side effect is telemetry export and queued experiment work.</div>
+      <div class="diagram"><div class="mermaid">flowchart LR
+        A[Customer agent] -->|SDK trace / OTLP| B[Ingestion API]
+        B --> C[(PostgreSQL trace metadata)]
+        B --> D[(S3 large artifacts)]
+        B --> E[Profiler]
+        E --> F[Baseline + eval engine]
+        F --> G[Staged optimizer]
+        G --> H[Experiment worker]
+        H --> I[Provider APIs]
+        H --> C
+        C --> J[Statistical + constraint gates]
+        J --> K[Recommendation + YAML export]
+        K -. manual adoption .-> A
+        style A fill:#17365d,stroke:#69a7ff,color:#fff
+        style I fill:#3b2d1c,stroke:#ffc978,color:#fff
+        style K fill:#164333,stroke:#89e0b0,color:#fff</div></div>
+    </section>
+
+    <section id="runtime">
+      <h2>2. Runtime composition</h2>
+      <div class="grid">
+        <div class="card"><strong>TypeScript SDK</strong><span><code>agentpgo.trace()</code> and manual spans sanitize attributes, keep content off by default, queue spans, and export OTLP JSON.</span></div>
+        <div class="card"><strong>AI SDK adapter</strong><span>Wraps <code>generateText</code> or a language model, capturing provider, model, node, usage, finish reason, duration, and errors.</span></div>
+        <div class="card"><strong>FastAPI control plane</strong><span>Authenticates API keys, resolves organization/project scope, validates bounded payloads, persists datasets/jobs, and exposes status/results.</span></div>
+        <div class="card"><strong>Python worker</strong><span>Consumes only job IDs, claims a fenced lease, checkpoints candidate results, renews visibility, enforces spend, and acknowledges after durable completion.</span></div>
+        <div class="card"><strong>Evaluator + optimizer</strong><span>Baseline metrics, deterministic graders, candidate search, Pareto filtering, and statistical acceptance are ordinary Python modules testable without providers.</span></div>
+        <div class="card"><strong>Artifacts</strong><span>PostgreSQL is authoritative for control state; S3 is reserved for large payloads/reports. SQS carries delivery, never the full workload.</span></div>
+      </div>
+      <div class="diagram"><div class="mermaid">flowchart TB
+        subgraph SDK[Customer process]
+          T[trace request] --> S[Span record]
+          S --> Q[bounded local queue]
+          Q --> O[OTLP JSON export]
+        end
+        subgraph API[API container]
+          Auth[API-key auth + project scope] --> Routes[FastAPI routes]
+          Routes --> Validate[Pydantic bounds + redaction]
+          Validate --> DB[(PostgreSQL)]
+          Validate --> Obj[(S3)]
+          Routes --> Queue[SQS publisher]
+        end
+        O -->|HTTPS /v1/traces| Auth
+        Queue --> Msg[SQS job id]
+        Msg --> W[Worker container]
+        W --> DB
+        W --> Providers[OpenAI / Anthropic / Google / fake provider]
+        W --> Gate[quality / latency / spend / statistical gates]
+        Gate --> DB
+      </div></div>
+    </section>
+
+    <section id="ingestion">
+      <h2>3. Telemetry ingestion and profiling</h2>
+      <p>The canonical internal shape is an OpenTelemetry GenAI span. The API accepts OTLP JSON at <code>/v1/traces</code> and the compatibility alias <code>/v1/otlp/v1/traces</code>. Span identity is <code>(project_id, trace_id, span_id)</code>; duplicates are ignored. The server recursively redacts prompt/output/content/credential-like keys and stores <code>raw_span</code> as an empty object unless explicit opt-in is enabled.</p>
+      <div class="diagram"><div class="mermaid">sequenceDiagram
+        participant Agent as Customer agent
+        participant SDK as SDK / AI SDK adapter
+        participant API as FastAPI ingestion
+        participant DB as PostgreSQL
+        participant Prof as Profiler
+        Agent->>SDK: node + model + operation
+        SDK->>SDK: sanitize metadata, no content by default
+        SDK->>API: OTLP JSON batch plus API key
+        API->>API: authenticate org/project, bounds, redact
+        API->>DB: insert trace/span if identity is new
+        DB-->>API: accepted or duplicate
+        API-->>SDK: accepted count
+        Prof->>DB: aggregate runs, calls, tokens, latency, cost
+        Prof-->>Agent: profile snapshot via API
+      </div></div>
+      <pre><code>{
+  "trace_id": "...",
+  "span_id": "...",
+  "agent": "support-agent",
+  "node": "reasoner",
+  "provider": "openai",
+  "requested_model": "gpt-5.6-sol",
+  "response_model": "gpt-5.6-sol",
+  "input_tokens": 18342,
+  "output_tokens": 1282,
+  "latency_ms": 3810,
+  "status": "success"
+}</code></pre>
+    </section>
+
+    <section id="optimization">
+      <h2>4. Optimization execution path</h2>
+      <p>An optimization run is a durable state machine. A request validates the candidate pool and budget, stores a versioned <code>JobPayload</code>, writes an outbox event, and publishes a small SQS message. The worker does not trust queue state as the source of truth; it loads the PostgreSQL job and claims it with a lease.</p>
+      <div class="diagram"><div class="mermaid">stateDiagram-v2
+        [*] --> queued
+        queued --> running: claim lease
+        running --> evaluating: start candidate evaluation
+        evaluating --> validating: all candidates checkpointed
+        validating --> completed: gates pass; recommendation persisted
+        running --> queued: bounded retry
+        evaluating --> queued: transient failure
+        validating --> queued: transient failure
+        queued --> failed: retry limit / budget failure
+        running --> failed: non-retryable failure
+        evaluating --> failed: spend cap / invalid metrics
+        validating --> failed: no eligible candidate
+        completed --> [*]
+        failed --> [*]
+      </div></div>
+      <h3>Staged search</h3>
+      <ol><li><strong>Baseline:</strong> evaluate the known configuration over the complete eval set.</li><li><strong>Sensitivity:</strong> vary one node/model assignment at a time and record quality, cost, and latency deltas.</li><li><strong>Beam:</strong> keep only the best bounded configurations instead of enumerating the full Cartesian product.</li><li><strong>Successive halving:</strong> run cheap early samples, discard weak candidates, and reserve the full suite for finalists.</li><li><strong>Gate and recommend:</strong> apply customer constraints, calculate paired confidence intervals, select a Pareto-eligible candidate, and persist an exportable recommendation.</li></ol>
+      <div class="diagram"><div class="mermaid">flowchart LR
+        Base[Baseline samples] --> Sens[One-node substitutions]
+        Sens --> Beam[Beam width N]
+        Beam --> Half[Successive halving]
+        Half --> Metrics[Paired quality / cost / latency]
+        Metrics --> Q{quality CI within tolerance?}
+        Q -- no --> Reject[reject / inconclusive]
+        Q -- yes --> L{latency limit?}
+        L -- no --> Reject
+        L -- yes --> S{spend cap?}
+        S -- no --> Reject
+        S -- yes --> Pareto[Pareto frontier]
+        Pareto --> Rec[recommendation + export]
+        style Reject fill:#3b2028,stroke:#ff8297,color:#fff
+        style Rec fill:#164333,stroke:#89e0b0,color:#fff
+      </div></div>
+      <pre><code>objective:
+  minimize: [cost, latency]
+constraints:
+  max_quality_regression: 0.01
+  max_p95_latency_ms: 15000
+  max_experiment_cost_usd: 25</code></pre>
+    </section>
+
+    <section id="data">
+      <h2>5. Authoritative data model</h2>
+      <p>Every customer-owned row carries <code>organization_id</code>. Project-scoped keys inject an authorized project into every resource lookup. Jobs and candidate results are durable; process memory is never used as a source of truth.</p>
+      <div class="diagram"><div class="mermaid">erDiagram
+        ORGANIZATION ||--o{ PROJECT : owns
+        ORGANIZATION ||--o{ API_KEY : issues
+        PROJECT ||--o{ TRACE : receives
+        PROJECT ||--o{ EVAL_DATASET : contains
+        EVAL_DATASET ||--o{ EVAL_CASE : versions
+        EVAL_DATASET ||--o{ EVAL_GRADER : uses
+        PROJECT ||--o{ JOB : runs
+        JOB ||--o{ JOB_CANDIDATE_RESULT : checkpoints
+        JOB ||--o| OPTIMIZATION_RESULT : produces
+        JOB ||--o{ OUTBOX_EVENT : publishes
+        ORGANIZATION ||--o{ AUDIT_EVENT : records
+        ORGANIZATION { string id string name }
+        PROJECT { string id string organization_id string slug }
+        TRACE { string trace_id string span_id int input_tokens int output_tokens }
+        EVAL_DATASET { string id string project_id int version }
+        JOB { string id string kind string status string claimed_by datetime claim_expires_at }
+        OPTIMIZATION_RESULT { string job_id json recommendation json metadata_json }
+      </div></div>
+      <table><thead><tr><th>Store</th><th>Role</th><th>Durability rule</th></tr></thead><tbody><tr><td>PostgreSQL</td><td>Tenancy, traces, evals, jobs, candidate receipts, recommendation</td><td>Authoritative state; migrations run as a one-off ECS task.</td></tr><tr><td>SQS + DLQ</td><td>Job delivery</td><td>Message contains <code>job_id</code> and <code>kind</code>; redelivery is expected.</td></tr><tr><td>S3</td><td>Large OTLP batches, eval files, reports, exports</td><td>Private, encrypted, versioned, lifecycle-retained.</td></tr></tbody></table>
+    </section>
+
+    <section id="durability">
+      <h2>6. Worker durability and failure semantics</h2>
+      <div class="diagram"><div class="mermaid">sequenceDiagram
+        participant Q as SQS
+        participant W as Worker
+        participant DB as PostgreSQL
+        participant P as Provider
+        Q->>W: receive job_id, visibility timeout starts
+        W->>DB: claim queued/expired job with lease token
+        W->>DB: reserve estimated spend FOR UPDATE
+        W->>P: execute candidate with bounded provider policy
+        W->>DB: record candidate result, usage, cost, checkpoint
+        W->>DB: release reservation, persist aggregate
+        W->>DB: persist OptimizationResult, transition completed
+        W->>Q: acknowledge only after durable completion
+        Note over W,Q: heartbeat renews DB lease and SQS visibility during long calls
+        Note over P,DB: provider idempotency is required for true exactly-once billing
+      </div></div>
+      <ul><li><strong>At-least-once processing:</strong> SQS may redeliver. A unique candidate identity and checkpoint mean completed candidates are not persisted twice.</li><li><strong>Lease fencing:</strong> mutations include the worker identity and lease token; a stale worker cannot overwrite a newer claim.</li><li><strong>Spend reservation:</strong> estimated cost is reserved atomically before an external call and reconciled to actual usage afterward.</li><li><strong>Outbox boundary:</strong> the database event records intent so a reconciler can re-publish if a direct queue publish fails.</li><li><strong>Honest guarantee:</strong> a crash after a provider succeeds but before the receipt commits can duplicate external spend unless the provider honors an idempotency key.</li></ul>
+    </section>
+
+    <section id="aws">
+      <h2>7. AWS deployment topology</h2>
+      <p>The current testing deployment uses one ECS Fargate API service and one worker service, fronted by an ALB. RDS is private; S3 and SQS are IAM-controlled. The current ALB is temporary HTTP because no user-owned domain/ACM certificate was available at deployment time.</p>
+      <div class="diagram"><div class="mermaid">flowchart TB
+        Internet((Internet)) --> ALB[Application Load Balancer<br/>current test: HTTP]
+        ALB --> API[ECS Fargate API<br/>FastAPI :8000]
+        API --> RDS[(RDS PostgreSQL<br/>private, encrypted)]
+        API --> SQS[SQS jobs]
+        API --> S3[(Private S3 artifacts)]
+        API --> SM[Secrets Manager + KMS]
+        SQS --> Worker[ECS Fargate worker]
+        Worker --> RDS
+        Worker --> S3
+        Worker --> Providers[External model providers]
+        DLQ[SQS dead-letter queue] -. bounded failures .-> SQS
+        Logs[CloudWatch logs / alarms] -. API + worker .-> API
+        Logs -.-> Worker
+        style ALB fill:#3b2d1c,stroke:#ffc978,color:#fff
+        style RDS fill:#183957,stroke:#69a7ff,color:#fff
+        style Worker fill:#164333,stroke:#89e0b0,color:#fff
+      </div></div>
+      <div class="grid"><div class="card"><strong>ECR</strong><span>One shared backend image, tagged by Git SHA; API, worker, and migration task use the same immutable artifact.</span></div><div class="card"><strong>IAM</strong><span>Separate ECS execution, API task, and worker task roles. Runtime access is limited to required SQS, S3, Secrets Manager, and KMS actions.</span></div><div class="card"><strong>Operations</strong><span>CloudWatch tracks ALB 5xx, task stops, queue age, DLQ depth, RDS storage/connections, and service health.</span></div></div>
+    </section>
+
+    <section id="security">
+      <h2>8. Security and privacy boundaries</h2>
+      <div class="diagram"><div class="mermaid">flowchart LR
+        Key[API key] --> Hash[hashed key lookup]
+        Hash --> Tenant[organization + optional project scope]
+        Tenant --> Authz[resource authorization]
+        Authz --> Redact[recursive content/credential redaction]
+        Redact --> Store[(PostgreSQL / S3)]
+        Secret[provider secret] --> KMS[KMS encryption]
+        KMS --> Runtime[task runtime retrieval]
+        Runtime --> Provider[provider call]
+        style Key fill:#3b2d1c,stroke:#ffc978,color:#fff
+        style Store fill:#183957,stroke:#69a7ff,color:#fff
+      </div></div>
+      <ul><li>Prompts, completions, tool payloads, and authorization-like attributes are off by default; only operational metadata is needed for profiling.</li><li>Request sizes, candidate counts, evaluation cases, and configuration bytes are bounded at the API edge.</li><li>API keys are hashed at rest and project-scoped keys cannot create or access another project.</li><li>Provider keys are task secrets, not source files or queue messages.</li><li>The deployed test endpoint is HTTP-only and must not receive customer data. HTTPS with a user-owned domain is the production gate.</li></ul>
+    </section>
+
+    <section id="operations">
+      <h2>9. Operational lifecycle</h2>
+      <div class="diagram"><div class="mermaid">flowchart LR
+        Dev[Git push] --> CI["GitHub Actions<br/>pytest + TS + migrations + Terraform + Docker"]
+        CI --> ECR[ECR image :git-sha]
+        ECR --> Mig[ECS one-off migration task]
+        Mig --> Deploy[Update API + worker services]
+        Deploy --> Smoke["health + ready + auth smoke"]
+        Smoke --> Observe[CloudWatch + queue/DLQ alarms]
+        Observe --> Repair[bounded retry / rollback / manual investigation]
+      </div></div>
+      <p>The verified release artifact is commit <code>a059ee7</code>. The current AWS testing stack runs the SHA-tagged image and its migration succeeded before service replacement. GitHub’s deploy job remains main-only and OIDC-gated; the feature-branch testing deployment was performed with the authorized AWS IAM user.</p>
+      <h3>What a recommendation means</h3>
+      <p>A recommendation is a persisted, reproducible experiment result—not an automatic routing policy. It contains the selected candidate configuration, measured quality/cost/latency, gate status, dataset/run metadata, and a portable export. A developer reviews it and changes their own agent configuration when ready.</p>
+    </section>
+  </main>
+  <footer>AgentPGO V1 architecture · source-grounded to the backend implementation and AWS testing deployment · Mermaid diagrams render client-side.</footer>
+  <script>mermaid.initialize({ startOnLoad:true, theme:'dark', securityLevel:'strict', themeVariables:{ primaryColor:'#17365d', primaryTextColor:'#eaf2ff', primaryBorderColor:'#69a7ff', lineColor:'#7f9fc9', secondaryColor:'#164333', tertiaryColor:'#3b2d1c', fontFamily:'Inter, system-ui, sans-serif' } });</script>
+</body>
+</html>

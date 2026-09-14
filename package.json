@@ -1,0 +1,9 @@
+{
+  "name": "agentpgo",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "node --experimental-strip-types --test packages/*/tests/*.test.ts"
+  },
+  "devDependencies": { "typescript": "^5.7.0" }
+}

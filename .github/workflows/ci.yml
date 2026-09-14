@@ -1,0 +1,85 @@
+name: ci
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: hashicorp/setup-terraform@v3
+        with: {terraform_version: '1.9.8'}
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - run: node --experimental-strip-types --test packages/*/tests/*.test.ts
+      - run: python scripts/validate_aws_migrations.py
+      - run: terraform -chdir=infra/terraform fmt -check -recursive
+      - run: terraform -chdir=infra/terraform init -backend=false
+      - run: terraform -chdir=infra/terraform validate
+      - run: docker build -f docker/Dockerfile .
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push immutable image
+        env:
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          SHA: ${{ github.sha }}
+        run: |
+          docker build -f docker/Dockerfile -t "$ECR_REPOSITORY:$SHA" .
+          docker push "$ECR_REPOSITORY:$SHA"
+      - name: Run database migration task
+        env:
+          ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          MIGRATION_TASK_DEFINITION: ${{ secrets.MIGRATION_TASK_DEFINITION }}
+          SUBNET_IDS: ${{ secrets.ECS_SUBNET_IDS }}
+          SECURITY_GROUP: ${{ secrets.ECS_SECURITY_GROUP }}
+        run: |
+          TASK=$(aws ecs run-task --cluster "$ECS_CLUSTER" --task-definition "$MIGRATION_TASK_DEFINITION" --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_IDS],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}" --query 'tasks[0].taskArn' --output text)
+          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$TASK"
+          CODE=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK" --query 'tasks[0].containers[0].exitCode' --output text)
+          test "$CODE" = "0"
+      - name: Deploy ECS services
+        env:
+          ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          ECS_API_SERVICE: ${{ secrets.ECS_API_SERVICE }}
+          ECS_WORKER_SERVICE: ${{ secrets.ECS_WORKER_SERVICE }}
+          IMAGE: ${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          update_service_image() {
+            local service="$1"
+            local task_definition
+            local new_task_definition
+            task_definition=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$service" --query 'services[0].taskDefinition' --output text)
+            aws ecs describe-task-definition --task-definition "$task_definition" --query 'taskDefinition' > task-definition.json
+            jq --arg image "$IMAGE" 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy) | .containerDefinitions |= map(.image = $image)' task-definition.json > task-definition-updated.json
+            new_task_definition=$(aws ecs register-task-definition --cli-input-json file://task-definition-updated.json --query 'taskDefinition.taskDefinitionArn' --output text)
+            aws ecs update-service --cluster "$ECS_CLUSTER" --service "$service" --task-definition "$new_task_definition" >/dev/null
+          }
+          update_service_image "$ECS_API_SERVICE"
+          update_service_image "$ECS_WORKER_SERVICE"
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_API_SERVICE" "$ECS_WORKER_SERVICE"
+      - name: HTTPS smoke test
+        env:
+          API_URL: ${{ secrets.API_URL }}
+        run: |
+          curl --fail --silent --show-error "$API_URL/health"
+          curl --fail --silent --show-error "$API_URL/ready"
