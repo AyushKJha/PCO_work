@@ -21,6 +21,14 @@ Start with `uvicorn apps.api.main:app --host 127.0.0.1 --port 8000`.
 
 Optimization/provider execution requires configured runners. Local auth and onboarding do not imply that live optimization or billing is configured.
 The interactive landing experiment is an illustrative simulation, not a live benchmark.
+```bash
+cd landingpage
+npm ci
+npm run lint
+npm run build
+```
+http://127.0.0.1:3000/
+## AWS delivery
 
 ## Deployment boundaries
 The existing frontend workflow deploys from `frontendv1`; backend deployment uses `main`.
