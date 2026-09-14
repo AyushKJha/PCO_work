@@ -13,7 +13,7 @@ This worktree contains the backend-first B2B V1. The unrelated `landingpage/` is
 - Alembic schema: `migrations/`
 
 ## Local verification
-
+http://127.0.0.1:3000/
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
