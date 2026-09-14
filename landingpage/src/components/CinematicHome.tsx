@@ -77,12 +77,12 @@ export function CinematicHome({ onLaunchStudio }: { onLaunchStudio: () => void }
   return <div ref={root} className={`tr-site ${paused ? 'tr-paused' : ''} ${intro ? 'tr-entering' : 'tr-entered'}`}>
     <a className="tr-skip" href="#tr-main">Skip to content</a>
     {intro && <div className="tr-intro" role="dialog" aria-label="TwineRun introduction" aria-modal="true">
-      <div className="tr-intro-lines" aria-hidden="true">{Array.from({ length: 9 }, (_, i) => <i key={i} style={{ '--i': i } as React.CSSProperties} />)}</div>
+      <div className="tr-intro-lines" aria-hidden="true"><img className="tr-intro-brandmark" src="/twinerun-profile-logo.png" alt="" /></div>
       <div className="tr-intro-word" aria-label="TwineRun">{'TwineRun'.split('').map((letter, i) => <span key={i} style={{ '--i': i } as React.CSSProperties}>{letter}</span>)}</div>
       <div className="tr-intro-bottom"><span>FROM COMPLEXITY TO CLARITY</span><button autoFocus onClick={() => setIntro(false)}>Skip intro <ArrowRight size={14} /></button></div>
     </div>}
     <header ref={header} className="tr-header">
-      <a href="/" className="tr-brand" aria-label="TwineRun home"><svg viewBox="0 0 48 32" aria-hidden="true"><path d="M1 3C21 3 25 29 47 29M1 16H47M1 29C21 29 25 3 47 3" /></svg>TwineRun<span>®</span></a>
+      <a href="/" className="tr-brand" aria-label="TwineRun home"><img className="tr-brandmark" src="/twinerun-profile-logo.png" alt="" />TwineRun<span>®</span></a>
       <span className="tr-header-caption">INTELLIGENCE, OPTIMIZED.</span>
       <div className="tr-header-actions"><button className="tr-launch" onClick={launch}>Open Studio <ArrowUpRight size={16} /></button><button ref={menuButton} className="tr-menu-toggle" aria-expanded={menu} aria-controls="tr-menu" aria-label={menu ? 'Close menu' : 'Open menu'} onClick={() => setMenu(!menu)}>{menu ? <X size={19} /> : <><span>Menu</span><Plus size={18} /></>}</button></div>
     </header>
