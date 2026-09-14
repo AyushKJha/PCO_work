@@ -12,7 +12,7 @@ npm ci
 npm run lint
 npm run build
 ```
-
+http://127.0.0.1:3000/
 ## AWS delivery
 
 Pushes to `frontendv1` run `.github/workflows/deploy-frontend.yml`, which builds the frontend, packages the static site with its Lambda adapter, deploys the existing AWS Lambda Function URL, waits for the update, and runs a live smoke test.
