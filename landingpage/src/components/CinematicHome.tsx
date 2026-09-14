@@ -15,28 +15,6 @@ const questions = [
   ['Is the interactive experiment a live benchmark?', 'No. It is an illustrative, local simulation showing the relationship between quality tolerance and candidate selection. Real results depend on your workflow, models, and evals.'],
 ];
 
-/** Exact TwineRun mark, based on the supplied profile/logo artwork. */
-function TwineRunLogoMark({ className = '' }: { className?: string }) {
-  return <svg className={`tr-thread-mark ${className}`} viewBox="0 0 140 104" fill="none" aria-hidden="true">
-    <defs>
-      <linearGradient id="tr-logo-metal" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#747a81"/><stop offset=".34" stopColor="#f4f5f6"/><stop offset=".62" stopColor="#a4a9af"/><stop offset="1" stopColor="#4b5158"/>
-      </linearGradient>
-      <linearGradient id="tr-logo-light" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#f7f8f9"/><stop offset=".52" stopColor="#d8dbe0"/><stop offset="1" stopColor="#8d939b"/></linearGradient>
-      <filter id="tr-logo-glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.1" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    </defs>
-    <g className="tr-logo-paths" fill="none" stroke="url(#tr-logo-metal)" strokeLinecap="round" filter="url(#tr-logo-glow)">
-      <path className="tr-logo-thread tr-logo-thread-a" d="M14 15 C49 15 52 16 79 31 C96 41 102 48 128 52" strokeWidth="7"><animate attributeName="d" dur="2.8s" repeatCount="indefinite" values="M14 15 C49 15 52 16 79 31 C96 41 102 48 128 52;M14 15 C43 7 60 28 79 37 C102 48 105 37 128 52;M14 15 C49 15 52 16 79 31 C96 41 102 48 128 52"/></path>
-      <path className="tr-logo-thread tr-logo-thread-b" d="M8 32 C45 32 54 32 79 43 C97 50 108 51 128 52" strokeWidth="4.6"><animate attributeName="d" dur="2.35s" begin="-0.6s" repeatCount="indefinite" values="M8 32 C45 32 54 32 79 43 C97 50 108 51 128 52;M8 32 C43 41 57 26 79 47 C98 62 107 40 128 52;M8 32 C45 32 54 32 79 43 C97 50 108 51 128 52"/></path>
-      <path className="tr-logo-thread tr-logo-thread-c" d="M18 49 C54 49 62 49 86 49 C103 49 114 51 128 52" strokeWidth="3.2"><animate attributeName="d" dur="2.55s" begin="-1.1s" repeatCount="indefinite" values="M18 49 C54 49 62 49 86 49 C103 49 114 51 128 52;M18 49 C48 42 67 57 86 46 C108 37 115 58 128 52;M18 49 C54 49 62 49 86 49 C103 49 114 51 128 52"/></path>
-      <path className="tr-logo-thread tr-logo-thread-d" d="M5 66 C43 66 54 66 80 58 C100 52 112 52 128 52" strokeWidth="4.5"><animate attributeName="d" dur="2.4s" begin="-1.35s" repeatCount="indefinite" values="M5 66 C43 66 54 66 80 58 C100 52 112 52 128 52;M5 66 C42 78 53 51 80 63 C104 72 112 45 128 52;M5 66 C43 66 54 66 80 58 C100 52 112 52 128 52"/></path>
-      <path className="tr-logo-thread tr-logo-thread-e" d="M24 86 C55 86 62 84 85 70 C103 59 112 55 128 52" strokeWidth="7"><animate attributeName="d" dur="2.9s" begin="-0.3s" repeatCount="indefinite" values="M24 86 C55 86 62 84 85 70 C103 59 112 55 128 52;M24 86 C56 94 62 69 85 76 C106 85 111 47 128 52;M24 86 C55 86 62 84 85 70 C103 59 112 55 128 52"/></path>
-      <path d="M25 15 C58 15 61 23 79 40 C94 53 107 56 128 52" stroke="#e8eaed" strokeOpacity=".72" strokeWidth="1.35"/><path d="M25 86 C58 86 66 73 84 61 C98 52 111 50 128 52" stroke="#f7f8f9" strokeOpacity=".72" strokeWidth="1.35"/>
-    </g>
-    <g fill="url(#tr-logo-light)" stroke="#f4f5f6" strokeWidth=".8"><circle cx="14" cy="15" r="5.5"/><circle cx="8" cy="32" r="4.7"/><circle cx="18" cy="49" r="4.8"/><circle cx="5" cy="66" r="4.8"/><circle cx="24" cy="86" r="5.5"/><circle cx="128" cy="52" r="7.2"/></g>
-  </svg>;
-}
-
 export function CinematicHome({ onLaunchStudio }: { onLaunchStudio: () => void }) {
   const [intro, setIntro] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [menu, setMenu] = useState(false);
@@ -53,7 +31,7 @@ export function CinematicHome({ onLaunchStudio }: { onLaunchStudio: () => void }
 
   useEffect(() => {
     if (!intro) return;
-    const timer = window.setTimeout(() => setIntro(false), 3600);
+    const timer = window.setTimeout(() => setIntro(false), 2700);
     return () => window.clearTimeout(timer);
   }, [intro]);
   useEffect(() => {
@@ -99,8 +77,7 @@ export function CinematicHome({ onLaunchStudio }: { onLaunchStudio: () => void }
   return <div ref={root} className={`tr-site ${paused ? 'tr-paused' : ''} ${intro ? 'tr-entering' : 'tr-entered'}`}>
     <a className="tr-skip" href="#tr-main">Skip to content</a>
     {intro && <div className="tr-intro" role="dialog" aria-label="TwineRun introduction" aria-modal="true">
-      <div className="tr-intro-lines" aria-hidden="true"><TwineRunLogoMark className="tr-intro-mark" /></div>
-      <div className="tr-intro-word" aria-label="TwineRun">{'TwineRun'.split('').map((letter, i) => <span key={i} style={{ '--i': i } as React.CSSProperties}>{letter}</span>)}</div>
+      <img className="tr-intro-logo" src="/twinerun-logo.svg" alt="TwineRun" />
       <div className="tr-intro-bottom"><span>FROM COMPLEXITY TO CLARITY</span><button autoFocus onClick={() => setIntro(false)}>Skip intro <ArrowRight size={14} /></button></div>
     </div>}
     <header ref={header} className="tr-header">
@@ -112,7 +89,7 @@ export function CinematicHome({ onLaunchStudio }: { onLaunchStudio: () => void }
     <div ref={content}>
       <main id="tr-main">
         <section className="tr-hero">
-          <div className="tr-hero-art" aria-hidden="true"><img src="/art/chrome-knot.png" alt="" fetchPriority="high" /><div className="tr-knot-crawler"><img src="/art/chrome-knot.png" alt="" /></div><div className="tr-art-shade" /></div>
+          <div className="tr-hero-art" aria-hidden="true"><img src="/art/chrome-knot.png" alt="" fetchPriority="high" /><div className="tr-art-shade" /></div>
           <div className="tr-hero-meta"><span><i /> THE OPTIMIZATION LAYER FOR AI AGENTS</span><span>LESS WASTE / MORE POSSIBILITY</span></div>
           <h1><span>Intelligence,</span><span className="tr-outline">untangled.</span></h1>
           <div className="tr-hero-bottom"><p>Your agent has a better way to run.<br />Find it. Prove it. Make it yours.</p><button className="tr-round-link" onClick={() => go('tr-experiment')}><span>Explore the<br />possibilities</span><span className="tr-circle"><ArrowDown /></span></button><span className="tr-hero-index">SCROLL TO UNRAVEL<br /><b>01 — 04</b></span></div>
