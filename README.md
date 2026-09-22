@@ -1,4 +1,4 @@
-# TwineRun / AgentPGO
+# TwineRun
 
 This local integration combines the React frontend and backend-v1.
 
