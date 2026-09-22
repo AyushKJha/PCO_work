@@ -1,5 +1,14 @@
 {
-  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://koq91flf04.execute-api.us-east-1.amazonaws.com/api/v1/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
   "trailingSlash": false,
   "functions": {
     "api/waitlist.js": {

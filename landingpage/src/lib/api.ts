@@ -87,6 +87,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     try { payload = JSON.parse(text); } catch { payload = text; }
   }
   if (!response.ok) {
+    if (response.status >= 500) {
+      throw new ApiError(response.status, "The backend is temporarily unavailable. Please try again shortly.", "SERVICE_UNAVAILABLE", response.headers.get("x-request-id") || undefined);
+    }
     const error = payload && typeof payload === "object" && "error" in payload ? (payload as { error: Record<string, unknown> }).error : payload;
     const details = (error && typeof error === "object" ? error : {}) as Record<string, unknown>;
     throw new ApiError(response.status, String(details.message || (typeof payload === "string" ? payload : "Request failed.")), String(details.code || "REQUEST_FAILED"), String(details.requestId || response.headers.get("x-request-id") || ""), (details.fields as Record<string, string>) || {});

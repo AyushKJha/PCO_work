@@ -1,0 +1,8 @@
+node_modules
+.git
+.env*
+!.env.example
+pnpm-lock.yaml
+pnpm-workspace.yaml
+public/art/astronaut-mesh.glb
+public/art/astronaut-attribution.txt
