@@ -1,1 +1,1 @@
-export { ObservatoryHome as VesperHomeFinal } from './ObservatoryHome';
+export { KineticHome as VesperHomeFinal } from './KineticHome';
