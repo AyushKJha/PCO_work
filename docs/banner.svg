@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="290" viewBox="0 0 1200 290" role="img" aria-label="AgentPGO — Measure before you optimize.">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#101c2b"/><stop offset="1" stop-color="#080d16"/></linearGradient><radialGradient id="light"><stop stop-color="#c3b6ff" stop-opacity=".18"/><stop offset="1" stop-color="#c3b6ff" stop-opacity="0"/></radialGradient><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#8295ac" stroke-opacity=".08"/></pattern></defs>
+<rect width="1200" height="100%" rx="18" fill="url(#bg)"/><rect width="1200" height="100%" rx="18" fill="url(#grid)"/>
+<circle cx="1050" cy="140" r="310" fill="url(#light)"/>
+<g fill="none" stroke="#c3b6ff" stroke-opacity=".24"><circle cx="1050" cy="140" r="75"/><circle cx="1050" cy="140" r="125"/><circle cx="1050" cy="140" r="190"/><path d="M820 140h380M1050 0v290M900 50l300 180"/></g>
+<g fill="#c3b6ff"><circle cx="925" cy="140" r="5"/><circle cx="1120" cy="36" r="4"/><circle cx="1050" cy="215" r="4"/><rect x="48" y="43" width="22" height="3"/></g>
+<g font-family="Segoe UI,Arial,sans-serif"><text x="84" y="50" font-size="14" letter-spacing="3" fill="#c3b6ff">08 / WORK IN PROGRESS</text>
+<text x="48" y="134" font-size="54" font-weight="700" letter-spacing="-2" fill="#f4f7fc">AgentPGO</text>
+<text x="48" y="179" font-size="24" font-weight="400" letter-spacing="0" fill="#b4c1d2">Measure before you optimize.</text>
+<path d="M48 220H740" stroke="#344153"/><text x="48" y="254" font-size="13" letter-spacing="2" fill="#8e9eb3">PYTHON · FASTAPI · OPENTELEMETRY</text><text x="1129" y="254" font-size="12" text-anchor="end" fill="#687c93">AYUSH / BUILDS</text></g></svg>

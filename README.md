@@ -1,74 +1,52 @@
+<img src="docs/banner.svg" alt="Project overview" width="100%">
+
 # AgentPGO
+### Profile-guided optimization for AI agents.
 
-Profile-guided optimization for AI agents.
+A backend project for collecting agent traces, profiling cost and latency, evaluating runs, and comparing optimization candidates before exporting recommendations.
 
-## Backend V1
+**Python · FastAPI · SQLAlchemy · OpenTelemetry · TypeScript SDK**
 
-This worktree contains the backend-first B2B V1. The unrelated `landingpage/` is preserved unchanged.
+**Status:** development in progress on the default `backend-v1` branch. The repository contains backend services, SDKs, infrastructure, tests, and a separate landing page. A public backend deployment has not been verified.
 
-- FastAPI API and OTLP ingestion: `apps/api/`
-- TypeScript SDK and Vercel AI SDK adapter: `packages/`
-- Profiling, evaluation, optimization, statistical gates, and provider seams: `services/`
-- CLI: `cli/`
-- Alembic schema: `migrations/`
+## Inside the system
 
-## Local verification
-http://127.0.0.1:3000/
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
-.venv/bin/pytest -q
-node --experimental-strip-types --test packages/*/tests/*.test.ts
+| Area | Source |
+| --- | --- |
+| API, authentication, and trace ingestion | [apps/api/](apps/api/) |
+| Python and TypeScript connectors | [packages/](packages/) |
+| Profiling, evaluation, and optimization | [services/](services/) |
+| Command-line interface | [cli/](cli/) |
+| Database migrations | [migrations/](migrations/) |
+| Infrastructure definitions | [infra/terraform/](infra/terraform/) |
+| Architecture notes | [docs/backend-architecture.md](docs/backend-architecture.md) |
+
+The API accepts OTLP JSON at `/v1/traces` and `/v1/otlp/v1/traces`. Protected operations require tenant-scoped credentials. Connector instrumentation is metadata-only by default and fails open if export is unavailable.
+
+## Local development
+
+Use Python 3.11+:
+
+```sh
+git clone --branch backend-v1 https://github.com/AyushKJha/PCO_work.git
+cd PCO_work
+python -m venv .venv
 ```
 
-## Run API
+Activate the environment (`.venv\Scripts\Activate.ps1` on Windows or `source .venv/bin/activate` on macOS/Linux), then install:
 
-```bash
+```sh
+python -m pip install -e ".[dev]"
+python -m pytest -q
 uvicorn apps.api.main:app --reload
 ```
 
-The API accepts OTLP JSON at `/v1/traces` and `/v1/otlp/v1/traces`. All protected endpoints require a tenant-scoped API key.
+Read the [backend architecture](docs/backend-architecture.md), [migration notes](migrations/README.md), and [Python SDK guide](packages/sdk-py/README.md) for configuration and integration. Starting the server alone does not provision a hosted service or production database.
 
-## Connector layer
+## Evaluation boundaries
 
-Any agent can connect by emitting OTLP/HTTP JSON to either ingestion endpoint. Use the TypeScript package (`@agentpgo/sdk`) or install the standalone Python package from `packages/sdk-py` (`agentpgo-sdk`) for in-process tracing:
+Benchmark replay uses historical reports and is a proxy measurement. It should not be presented as a new live provider benchmark or a measured production improvement. Live provider runs require separate credentials and recorded usage/latency evidence.
 
-```python
-from agentpgo import AgentPGOClient
+The codebase includes billing and deployment components; their presence does not establish that a production service or payment integration is live.
 
-client = AgentPGOClient(
-    api_key="project-key",
-    project_id="project-id",  # required for organization-scoped keys
-    endpoint="https://api.agentpgo.dev/v1/traces",
-    service_name="my-agent",
-)
-
-with client.trace(node="researcher", model="openai/gpt-5.6-sol", provider="openai"):
-    run_agent()
-
-client.flush_sync()
-```
-
-Instrumentation is metadata-only by default (model, node, provider, tokens, latency, status, and tool-call count). Prompt/output content is not collected by these connectors. Export is fail-open, so a telemetry outage does not interrupt the agent.
-
-## Scope boundaries
-
-V1 produces recommendations and YAML exports only. It does not change production routing, collect prompt/output content by default, implement a frontend, or integrate payments.
-
-## Open Deep Research benchmark
-
-The bounded benchmark adapter lives in `scripts/run_odr_benchmark.py`. It uses the fork at `/home/lenovo/Documents/open_deep_research` by default.
-
-Replay historical reports (no network or provider calls):
-
-```bash
-.venv/bin/python scripts/run_odr_benchmark.py --mode replay --tasks 20 --search-tasks 50
-```
-
-For an explicit Backboard live smoke, place `BACKBOARD_API_KEY`, optional `BACKBOARD_BASE_URL`, and optional `BACKBOARD_LLM_PROVIDER` in the Open Deep Research fork's `.env`, then run only a bounded task first:
-
-```bash
-.venv/bin/python scripts/run_odr_benchmark.py --mode backboard --tasks 1 --search-tasks 1 --model-pool backboard:gpt-luna-5.6
-```
-
-The replay metric is a historical-report overlap proxy, not Deep Research Bench RACE. A live run is only a real provider benchmark when the output records `mode: backboard` and completes with provider usage/latency evidence.
+[Development and benchmark notes](DEVELOPMENT.md) · [Local AWS validation](docs/aws/local-validation.md)
